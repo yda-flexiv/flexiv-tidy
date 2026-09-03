@@ -28,7 +28,9 @@ and queues every decision in memory until **Write changes** is confirmed.
 The reviewer provides:
 
 - a searchable, filterable diagnostics queue;
-- diff, current-file, and proposed-file views;
+- an offline Monaco editor with syntax highlighting and line numbers;
+- automatic selection of fixable diagnostics and an immediate suggested diff;
+- exact error-line navigation when clang-tidy has no automatic fix;
 - `A` accept, `R` reject, `D` defer, `E` edit, and `J`/`K` navigation shortcuts;
 - safe manual edits that mark later findings in the edited file as stale; and
 - a combined final diff before any file is written.

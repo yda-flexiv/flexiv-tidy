@@ -41,7 +41,7 @@ h1 { margin: 5px 0 0; font-size: 23px; letter-spacing: -.04em; }
 .search input { width: 100%; height: 37px; padding: 0 12px 0 34px; border: 1px solid #d8ddd8; border-radius: 7px; outline: none; background: white; color: var(--ink); font-size: 11px; }
 .search input:focus { border-color: #87928f; box-shadow: 0 0 0 3px #e7ebe7; }
 .filter-row { display: flex; gap: 5px; padding: 0 4px 13px; border-bottom: 1px solid #e1e5e0; }
-.filter-row button, .view-tabs button { height: 28px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; color: #727d7b; font-size: 10px; }
+.filter-row button { height: 28px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; color: #727d7b; font-size: 10px; }
 .filter-row button:hover, .filter-row button.active { background: #e9ece8; color: #25302f; }
 .finding-list { min-height: 0; overflow-y: auto; padding: 8px 4px 20px; scrollbar-width: thin; }
 .finding-card { width: 100%; display: grid; gap: 7px; padding: 13px 12px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: inherit; text-align: left; }
@@ -58,7 +58,7 @@ h1 { margin: 5px 0 0; font-size: 23px; letter-spacing: -.04em; }
 .mini-status.stale { border: 1px solid #929b99; background: transparent; }
 .review-pane { min-width: 0; min-height: 0; position: relative; background: #f1f3ef; }
 .finding-detail { height: 100%; display: grid; grid-template-rows: auto auto auto minmax(0, 1fr) auto; }
-.detail-head { min-height: 138px; display: flex; justify-content: space-between; gap: 24px; padding: 26px 30px 22px; border-bottom: 1px solid var(--line); background: white; }
+.detail-head { grid-row: 1; min-height: 138px; display: flex; justify-content: space-between; gap: 24px; padding: 26px 30px 22px; border-bottom: 1px solid var(--line); background: white; }
 .detail-title { min-width: 0; }
 .detail-title > div { display: flex; align-items: center; gap: 10px; }
 .status-pill { padding: 4px 6px; border-radius: 4px; background: #edf0ec; color: #687371; font-size: 8px; font-weight: 800; letter-spacing: .08em; }
@@ -74,9 +74,19 @@ h1 { margin: 5px 0 0; font-size: 23px; letter-spacing: -.04em; }
 .pager button:first-child { border-radius: 6px 0 0 6px; }
 .pager button:last-child { margin-left: -1px; border-radius: 0 6px 6px 0; }
 .pager button:disabled { opacity: .35; cursor: default; }
-.notice { margin: 14px 30px 0; padding: 10px 12px; border: 1px solid #eadcc0; border-radius: 6px; background: #fff9eb; color: #785d26; font-size: 11px; }
-.view-tabs { display: flex; gap: 4px; padding: 11px 30px 9px; }
-.view-tabs button.active { background: #dde2dd; color: #273230; font-weight: 700; }
+.notice { grid-row: 2; margin: 14px 30px 0; padding: 10px 12px; border: 1px solid #eadcc0; border-radius: 6px; background: #fff9eb; color: #785d26; font-size: 11px; }
+.editor-bar { grid-row: 3; min-width: 0; display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 11px 30px 9px; }
+.editor-bar > div:last-child { display: flex; align-items: center; gap: 9px; flex: none; color: #7d8785; font-size: 9px; }
+.editor-mode { padding: 4px 7px; border-radius: 4px; background: #dde4df; color: #40504c; font-weight: 750; letter-spacing: .03em; text-transform: uppercase; }
+.file-tabs { min-width: 0; display: flex; gap: 4px; overflow-x: auto; scrollbar-width: thin; }
+.file-tabs button { max-width: 260px; height: 29px; flex: none; overflow: hidden; padding: 0 10px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: #737e7c; text-overflow: ellipsis; white-space: nowrap; font: 10px/1 ui-monospace, SFMono-Regular, Menlo, monospace; }
+.file-tabs button:hover { background: #e7ebe7; }
+.file-tabs button.active { border-color: #d7ddd8; background: white; color: #283330; box-shadow: 0 1px 2px rgb(20 30 30 / 5%); }
+.monaco-shell { grid-row: 4; min-height: 0; position: relative; margin: 0 30px 18px; overflow: hidden; border: 1px solid #303a3c; border-radius: 9px; background: #1e2729; box-shadow: 0 8px 24px rgb(23 33 34 / 8%); }
+.monaco-host { width: 100%; height: 100%; }
+.editor-loading { position: absolute; inset: 0; display: grid; place-items: center; background: #1e2729; color: #aab4b2; font: 10px/1 ui-monospace, SFMono-Regular, Menlo, monospace; }
+.diagnostic-whole-line { background: rgb(224 86 69 / 13%); }
+.diagnostic-glyph { border-left: 3px solid #e05645; margin-left: 4px; }
 .code-shell { min-height: 0; margin: 0 30px 18px; overflow: hidden; border: 1px solid #d3d8d4; border-radius: 9px; background: #20292b; box-shadow: 0 8px 24px rgb(23 33 34 / 8%); }
 .code-toolbar { height: 37px; display: flex; justify-content: space-between; align-items: center; padding: 0 14px; border-bottom: 1px solid #3a4446; color: #adb6b4; font: 9px/1 ui-monospace, SFMono-Regular, Menlo, monospace; }
 pre { height: calc(100% - 37px); margin: 0; overflow: auto; padding: 15px 0 24px; color: #d7ddda; tab-size: 4; font: 11px/1.62 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre; scrollbar-color: #566062 #20292b; }
@@ -86,7 +96,7 @@ pre { height: calc(100% - 37px); margin: 0; overflow: auto; padding: 15px 0 24px
 .code-line.hunk { color: #8bc1c5; }
 .code-line.meta { color: #abb4b2; font-weight: 700; }
 .code-line.focus { box-shadow: inset 3px 0 var(--orange); background-color: #2b3435; }
-.actionbar { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 14px 30px; border-top: 1px solid #dce0dc; background: white; }
+.actionbar { grid-row: 5; display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 14px 30px; border-top: 1px solid #dce0dc; background: white; }
 .actionbar p { display: grid; gap: 4px; margin: 0; color: #919997; font-size: 9px; }
 .actionbar p b { color: #4f5a58; font-size: 10px; }
 .actionbar p kbd { margin: 0; }
@@ -104,11 +114,29 @@ dialog::backdrop { background: rgb(18 27 28 / 62%); backdrop-filter: blur(2px); 
 .icon-button { width: 32px; height: 32px; border: 1px solid #d9ddda; border-radius: 6px; background: white; color: #56615f; font-size: 19px; }
 .dialog-copy { margin: 10px 0 16px; color: #6e7977; font-size: 11px; line-height: 1.5; }
 .dialog-card footer { display: grid; grid-template-columns: auto 1fr auto auto; gap: 8px; margin-top: 17px; }
-.editors { max-height: 62vh; display: grid; gap: 14px; overflow: auto; }
-.editor { display: grid; gap: 7px; }
-.editor label { color: #56615f; font: 10px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace; }
-.editor textarea { width: 100%; min-height: 390px; resize: vertical; padding: 14px; border: 1px solid #d4d9d5; border-radius: 7px; outline: none; background: #20292b; color: #e0e5e2; font: 11px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; tab-size: 4; }
-.editor textarea:focus { border-color: #81908b; box-shadow: 0 0 0 3px #dfe6e1; }
+.edit-diagnostics { margin: 0 0 10px; overflow: hidden; border: 1px solid #edcfca; border-radius: 7px; background: #fff8f6; }
+.edit-diagnostics > header { min-height: 33px; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 0 10px; border-bottom: 1px solid #edd9d5; background: #fff1ee; }
+.edit-diagnostics > header strong { color: #9b3933; font-size: 8px; font-weight: 850; letter-spacing: .08em; }
+.edit-diagnostics > header code { min-width: 0; overflow: hidden; color: #8f6b66; text-overflow: ellipsis; white-space: nowrap; font: 9px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; }
+.edit-diagnostic-list { max-height: 122px; overflow-y: auto; padding: 4px; scrollbar-width: thin; }
+.edit-diagnostic-item { width: 100%; display: grid; grid-template-columns: 58px minmax(0, 1fr) auto; align-items: center; gap: 9px; padding: 7px 8px; border: 1px solid transparent; border-radius: 5px; background: transparent; color: inherit; text-align: left; }
+.edit-diagnostic-item:hover { background: #f9eae7; }
+.edit-diagnostic-item.active { border-color: #e6c0ba; background: #fbe4df; }
+.edit-diagnostic-item > span { color: #a9473f; font: 700 9px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace; }
+.edit-diagnostic-item > div { min-width: 0; }
+.edit-diagnostic-item strong { display: block; overflow: hidden; color: #653530; font-size: 10px; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
+.edit-diagnostic-item code { display: block; overflow: hidden; margin-top: 2px; color: #a05b54; text-overflow: ellipsis; white-space: nowrap; font: 8px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace; }
+.edit-diagnostic-item i { width: 7px; height: 7px; border-radius: 50%; background: #df776e; }
+.edit-diagnostic-item i.accepted { background: var(--green); }
+.edit-diagnostic-item i.rejected { background: var(--red); }
+.edit-diagnostic-item i.deferred { background: #d99b2b; }
+.edit-diagnostic-item i.stale { border: 1px solid #929b99; background: transparent; }
+.edit-diagnostic-empty { margin: 0; padding: 10px; color: #826d69; font-size: 10px; }
+.dialog-tabs { margin: 0 0 8px; padding: 4px; border: 1px solid #d9ded9; border-radius: 7px; background: #f2f4f1; }
+.edit-monaco { height: min(50vh, 560px); overflow: hidden; border: 1px solid #303a3c; border-radius: 8px; background: #1e2729; }
+.manual-diagnostic-line { background: rgb(224 86 69 / 10%); }
+.manual-diagnostic-current-line { background: rgb(224 86 69 / 20%); box-shadow: inset 3px 0 #e05645; }
+.manual-diagnostic-glyph { border-left: 3px solid #e05645; margin-left: 4px; }
 .final-code { height: min(58vh, 620px); margin: 0; }
 .final-code pre { height: 100%; }
 .ghost { border-color: transparent; background: transparent; }
@@ -125,8 +153,8 @@ dialog::backdrop { background: rgb(18 27 28 / 62%); backdrop-filter: blur(2px); 
   .progress-block { display: none; }
   .workspace { grid-template-columns: 310px minmax(0, 1fr); }
   .detail-head, .actionbar { padding-left: 20px; padding-right: 20px; }
-  .view-tabs { padding-left: 20px; }
-  .code-shell { margin-left: 20px; margin-right: 20px; }
+  .editor-bar { padding-left: 20px; padding-right: 20px; }
+  .monaco-shell, .code-shell { margin-left: 20px; margin-right: 20px; }
   .actionbar p span { display: none; }
 }
 @media (max-width: 680px) {
@@ -138,6 +166,7 @@ dialog::backdrop { background: rgb(18 27 28 / 62%); backdrop-filter: blur(2px); 
   .queue { height: 42vh; border-right: 0; border-bottom: 1px solid var(--line); }
   .review-pane { min-height: 58vh; }
   .finding-detail { min-height: 58vh; }
+  .monaco-shell { min-height: 360px; }
   .actionbar { align-items: stretch; flex-direction: column; }
   .actionbar > div { display: grid; grid-template-columns: 1fr 1fr; }
 }

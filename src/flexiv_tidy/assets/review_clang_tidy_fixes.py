@@ -597,28 +597,58 @@ class ReviewRequestHandler(BaseHTTPRequestHandler):
         return payload
 
     def _asset(self, request_path: str) -> None:
-        name = WEB_ASSETS.get(request_path)
-        if name is None:
-            self.send_error(HTTPStatus.NOT_FOUND)
-            return
+        immutable = request_path.startswith("/monaco/")
+        if immutable:
+            root = (self.server.assets_dir / "monaco").resolve()
+            relative = request_path.removeprefix("/monaco/")
+            if not relative:
+                self.send_error(HTTPStatus.NOT_FOUND)
+                return
+            path = (root / relative).resolve()
+            try:
+                path.relative_to(root)
+            except ValueError:
+                self.send_error(HTTPStatus.NOT_FOUND)
+                return
+            name = relative
+        else:
+            name = WEB_ASSETS.get(request_path)
+            if name is None:
+                self.send_error(HTTPStatus.NOT_FOUND)
+                return
+            path = self.server.assets_dir / name
         try:
-            body = (self.server.assets_dir / name).read_bytes()
+            body = path.read_bytes()
         except OSError:
             self.send_error(HTTPStatus.INTERNAL_SERVER_ERROR, "web UI asset missing")
             return
         content_type = mimetypes.guess_type(name)[0] or "application/octet-stream"
         self.send_response(HTTPStatus.OK)
-        self.send_header("Content-Type", f"{content_type}; charset=utf-8")
+        if content_type.startswith("text/") or content_type in {
+            "application/javascript",
+            "application/json",
+        }:
+            content_type = f"{content_type}; charset=utf-8"
+        self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body)))
-        self.send_header("Cache-Control", "no-store")
-        self.send_header("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'")
+        self.send_header(
+            "Cache-Control",
+            "public, max-age=31536000, immutable" if immutable else "no-store",
+        )
+        self.send_header(
+            "Content-Security-Policy",
+            "default-src 'self'; script-src 'self' blob:; "
+            "style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; "
+            "font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; "
+            "base-uri 'none'; frame-ancestors 'none'",
+        )
         self.send_header("X-Content-Type-Options", "nosniff")
         self.end_headers()
         self.wfile.write(body)
 
     def do_GET(self) -> None:
         request_path = urlparse(self.path).path
-        if request_path in WEB_ASSETS:
+        if request_path in WEB_ASSETS or request_path.startswith("/monaco/"):
             self._asset(request_path)
             return
         if not self._authorized():

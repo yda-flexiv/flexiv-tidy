@@ -22,6 +22,12 @@ SPEC.loader.exec_module(reviewer)
 
 
 class WebReviewSessionTest(unittest.TestCase):
+    def test_monaco_assets_are_bundled(self):
+        assets = REVIEWER_PATH.parent
+        self.assertTrue((assets / "monaco" / "vs" / "loader.js").is_file())
+        self.assertTrue((assets / "monaco" / "vs" / "editor" / "editor.main.js").is_file())
+        self.assertTrue((assets / "monaco" / "LICENSE").is_file())
+
     def make_review(self, temporary: str):
         library_root = Path(temporary) / "repo" / "lib" / "comm" / "Example"
         library_root.mkdir(parents=True)
