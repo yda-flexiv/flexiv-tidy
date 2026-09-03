@@ -1,0 +1,52 @@
+---
+# Configure clang-tidy for sw projects
+
+# Why certain checks are disabled:
+#
+#  -modernize-use-trailing-return-type: clang-tidy recommends using
+#      `auto Foo() -> std::string { return ...; }`, we think the code is less
+#      readable in this form.
+#
+#  -modernize-avoid-c-arrays: We only use C arrays when they seem to be the
+#      right tool for the job, such as `char foo[] = "hello"`. In these cases,
+#      avoiding C arrays often makes the code less readable, and std::array is
+#      not a drop-in replacement because it doesn't deduce the size.
+#
+#  -modernize-use-nodiscard: Too many changes have to be made to existing code 
+#      to satisfy this check
+#
+#  -modernize-pass-by-value: Many changes related to constructor taking std::string.
+#      Pass by value + move for short string is even slower than const ref + copy.
+#      
+#  -bugprone-narrowing-conversions: too many false positives around size_t
+#
+#  -bugprone-reserved-identifier: We have many functions starts with
+#      underscore+capital letter
+#
+#  -bugprone-easily-swappable-parameters: too many false positives.
+#
+#  -bugprone-implicit-widening-of-multiplication-result: too many false positives.
+#     Almost any expression of the form `2 * variable` or `long x = a_int * b_int;`
+#     generates an error.
+#
+Checks: >
+  -*,
+  bugprone-*,
+  clang-analyzer-*,
+  modernize-*,
+  performance-*,
+  -modernize-use-trailing-return-type,
+  -modernize-avoid-c-arrays,
+  -modernize-use-nodiscard,
+  -modernize-pass-by-value,
+  -bugprone-narrowing-conversions,
+  -bugprone-reserved-identifier,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-implicit-widening-of-multiplication-result,
+
+WarningsAsErrors: '*'
+
+ExtraArgs: ["-isystem/usr/include/c++/11", "-isystem/usr/include/x86_64-linux-gnu/c++/11","-Wno-unknown-warning-option","-fno-caret-diagnostics" ]
+# -fno-caret-diagnositics is to silence 'x warnings generated' output from clang, https://github.com/llvm/llvm-project/issues/47042
+
+HeaderFilterRegex: '.*/Inc/.*'

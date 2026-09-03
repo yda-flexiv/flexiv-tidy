@@ -1,0 +1,19 @@
+[project]
+name = "flexiv-tidy"
+version = "0.1.0"
+description = "Flexiv clang-tidy fix and clangd-tidy speedup runner"
+readme = "README.md"
+authors = [
+    { name = "da.yang", email = "da.yang@flexiv.com" }
+]
+requires-python = ">=3.10"
+dependencies = [
+    "PyYAML>=6.0",
+]
+
+[project.scripts]
+flexiv-tidy = "flexiv_tidy:main"
+
+[build-system]
+requires = ["uv_build>=0.11.26,<0.12.0"]
+build-backend = "uv_build"

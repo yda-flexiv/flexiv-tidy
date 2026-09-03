@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Flexiv Tidy Review</title>
+  <link rel="stylesheet" href="/app.css">
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark">F</span><span><b>flexiv-tidy</b><small>Fix review</small></span></div>
+      <div class="progress-block">
+        <div><span id="progress-label">Loading review…</span><strong id="changed-label">0 files changed</strong></div>
+        <div class="progress"><i id="progress-bar"></i></div>
+      </div>
+      <button class="primary finish-button" id="finish-button" type="button">Review changes <kbd>F</kbd></button>
+    </header>
+
+    <main class="workspace">
+      <aside class="queue">
+        <div class="queue-head">
+          <div><span class="eyebrow">DIAGNOSTICS</span><h1>Review queue</h1></div>
+          <span class="count" id="visible-count">0</span>
+        </div>
+        <label class="search"><span>⌕</span><input id="search" type="search" placeholder="Search check, file, message…" autocomplete="off"></label>
+        <div class="filter-row" id="filters" role="group" aria-label="Filter findings">
+          <button class="active" data-filter="pending" type="button">To review</button>
+          <button data-filter="all" type="button">All</button>
+          <button data-filter="fixable" type="button">Fixable</button>
+        </div>
+        <div class="finding-list" id="finding-list" aria-live="polite"></div>
+      </aside>
+
+      <section class="review-pane" id="review-pane">
+        <div class="empty-state" id="empty-state">
+          <span>✓</span><h2>Queue clear</h2><p>Review the combined diff, then write or discard your queued changes.</p>
+          <button class="primary" id="empty-finish" type="button">Review changes</button>
+        </div>
+        <article class="finding-detail" id="finding-detail" hidden>
+          <header class="detail-head">
+            <div class="detail-title">
+              <div><span class="status-pill" id="detail-status">PENDING</span><code id="detail-check"></code></div>
+              <h2 id="detail-message"></h2>
+              <p><code id="detail-location"></code><span id="detail-position"></span></p>
+            </div>
+            <div class="pager"><button id="previous" type="button" aria-label="Previous finding">↑</button><button id="next" type="button" aria-label="Next finding">↓</button></div>
+          </header>
+          <div class="notice" id="detail-notice" hidden></div>
+          <div class="view-tabs" id="view-tabs" role="tablist">
+            <button class="active" data-view="diff" type="button">Diff</button>
+            <button data-view="before" type="button">Before</button>
+            <button data-view="proposed" type="button">Proposed</button>
+          </div>
+          <div class="code-shell"><div class="code-toolbar"><span id="code-label">Proposed change</span><span id="file-count"></span></div><pre id="code-view" tabindex="0"></pre></div>
+          <footer class="actionbar">
+            <p><b id="finding-index">1 of 1</b><span><kbd>J</kbd>/<kbd>K</kbd> navigate · decisions stay in memory until final write</span></p>
+            <div>
+              <button class="secondary" id="defer" type="button">Defer <kbd>D</kbd></button>
+              <button class="danger" id="reject" type="button">Reject <kbd>R</kbd></button>
+              <button class="secondary" id="edit" type="button">Edit <kbd>E</kbd></button>
+              <button class="accept" id="accept" type="button">Accept & next <kbd>A</kbd></button>
+            </div>
+          </footer>
+        </article>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="edit-dialog">
+    <form method="dialog" class="dialog-card wide">
+      <header><div><span class="eyebrow">MANUAL FIX</span><h2>Edit proposed files</h2></div><button class="icon-button" value="cancel" aria-label="Close">×</button></header>
+      <p class="dialog-copy">A manual edit makes later diagnostics touching the same file stale. They will be skipped until clang is rerun.</p>
+      <div class="editors" id="editors"></div>
+      <footer><button class="secondary" value="cancel">Cancel</button><button class="accept" id="accept-edits" value="default">Accept edited version</button></footer>
+    </form>
+  </dialog>
+
+  <dialog id="finish-dialog">
+    <form method="dialog" class="dialog-card wide">
+      <header><div><span class="eyebrow">FINAL REVIEW</span><h2>Queued changes</h2></div><button class="icon-button" value="cancel" aria-label="Close">×</button></header>
+      <p class="dialog-copy" id="finish-copy"></p>
+      <div class="code-shell final-code"><pre id="final-diff" tabindex="0"></pre></div>
+      <footer><button class="danger ghost" id="discard-all" value="discard">Discard all</button><span></span><button class="secondary" value="cancel">Keep reviewing</button><button class="accept" id="write-changes" value="write">Write changes</button></footer>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="/app.js" defer></script>
+</body>
+</html>
