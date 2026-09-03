@@ -170,8 +170,19 @@ function showMainFile(index) {
     const target = item.path === detail.finding.path
       ? clampPosition(item.modified, detail.finding.line, detail.finding.column)
       : { lineNumber: 1, column: 1 };
-    mainEditor.getModifiedEditor().setPosition(target);
-    mainEditor.getModifiedEditor().revealPositionInCenter(target);
+    const editor = mainEditor.getModifiedEditor();
+    const reveal = () => {
+      if (editor.getModel() !== item.modified) return;
+      editor.setPosition(target);
+      editor.revealPositionInCenter(target);
+    };
+    reveal();
+    requestAnimationFrame(reveal);
+    let revealSubscription;
+    revealSubscription = mainEditor.onDidUpdateDiff(() => {
+      reveal();
+      revealSubscription?.dispose();
+    });
   } else {
     mainEditor.setModel(item.model);
     const target = item.path === detail.finding.path
