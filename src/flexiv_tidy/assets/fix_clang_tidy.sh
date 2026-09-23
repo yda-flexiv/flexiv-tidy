@@ -9,7 +9,8 @@ Usage: ./fix_clang_tidy.sh [options] <library>
 Run clang-tidy on one library's translation units and review its fixes.
 
 The library may be a unique short name (FvrRemoteParam), a path relative to
-lib/ (comm/FvrRemoteParam), or a repository path (lib/comm/FvrRemoteParam).
+lib/ (comm/FvrRemoteParam or FvrUiVersionAndUpgradeFrame), or a repository
+path (lib/comm/FvrRemoteParam or lib/FvrUiVersionAndUpgradeFrame).
 
 Options:
   -n, --dry-run              Report diagnostics without opening the reviewer
@@ -141,9 +142,12 @@ resolve_library() {
         lib/*) candidate="$REPO_ROOT/$spec" ;;
         */*) candidate="$REPO_ROOT/lib/$spec" ;;
         *)
+            # Nested layout: lib/<category>/<name> (flexiv_sw_base).
+            # Flat layout:    lib/<name>           (flexiv_sw_uiapp).
             while IFS= read -r -d '' candidate; do
+                [ -f "$candidate/CMakeLists.txt" ] || continue
                 matches+=("$candidate")
-            done < <(find "$REPO_ROOT/lib" -mindepth 2 -maxdepth 2 -type d -name "$spec" -print0)
+            done < <(find "$REPO_ROOT/lib" -mindepth 1 -maxdepth 2 -type d -name "$spec" -print0)
             if [ "${#matches[@]}" -eq 0 ]; then
                 fail "no library named '$spec' exists under lib/"
             elif [ "${#matches[@]}" -gt 1 ]; then
@@ -158,9 +162,8 @@ resolve_library() {
     [ -d "$candidate" ] || fail "library directory does not exist: $candidate"
     candidate="$(realpath "$candidate")"
     local relative="${candidate#"$REPO_ROOT/lib/"}"
-    if [ "$relative" = "$candidate" ] || [[ "$relative" != */* ]] \
-        || [[ "${relative#*/}" == */* ]]; then
-        fail "library must be a direct lib/<category>/<name> directory"
+    if [ "$relative" = "$candidate" ] || [[ "$relative" == */*/* ]]; then
+        fail "library must be lib/<name> or lib/<category>/<name>"
     fi
     [ -f "$candidate/CMakeLists.txt" ] || fail "library has no CMakeLists.txt: $candidate"
     printf '%s\n' "$candidate"

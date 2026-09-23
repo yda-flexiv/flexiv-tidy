@@ -48,11 +48,13 @@ cmake --preset ubuntu-static-check -B build/clang-tidy
 ### 3. Review and apply fixes
 
 Pass either a unique library name, a path below `lib/`, or a full repository
-path. The default command opens the local Web UI:
+path. Both `lib/<name>` (UIApp) and `lib/<category>/<name>` layouts are
+supported. The default command opens the local Web UI:
 
 ```sh
 flexiv-tidy fix FvrRemoteParam
 flexiv-tidy fix --library-only comm/FvrRemoteParam
+flexiv-tidy fix --library-only lib/FvrUiVersionAndUpgradeFrame
 ```
 
 Fixable diagnostics open directly in a Monaco suggested-diff view. Use `A` to
@@ -119,8 +121,9 @@ The reviewer provides:
 
 Runs clang-tidy on one library's translation units, then opens the Web UI to
 review exported fixes. The library may be a unique short name
-(`FvrRemoteParam`), a path under `lib/` (`comm/FvrRemoteParam`), or a repository
-path.
+(`FvrRemoteParam` or `FvrUiVersionAndUpgradeFrame`), a path under `lib/`
+(`comm/FvrRemoteParam`), or a repository path (`lib/FvrUiVersionAndUpgradeFrame`).
+Short names must be unique across both supported layouts.
 
 Options are forwarded to the bundled `fix_clang_tidy.sh`:
 

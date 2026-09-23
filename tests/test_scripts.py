@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -124,6 +125,69 @@ sys.exit(int(os.environ['TEST_STATUS']))
                 self.database.write_text(json.dumps([entry]))
                 result = self.clangd()
                 self.assertEqual(result.returncode, 0, result.stderr)
+
+    def fix(self, *args):
+        self.executable(self.root / "docker/docker_dispatch.sh", """#!/usr/bin/env python3
+import json, os, sys
+with open(os.environ['TEST_CALLS'], 'a') as stream:
+    stream.write(json.dumps(sys.argv[6:]) + '\\n')
+""")
+        return subprocess.run(
+            ["bash", str(assets_dir() / "fix_clang_tidy.sh"), *args],
+            cwd=self.root, env=self.env, capture_output=True, text=True, timeout=15,
+        )
+
+    def test_fix_accepts_flat_and_nested_libraries(self):
+        flat = self.root / "lib/FlatExample"
+        shutil.copytree(self.source.parent, flat)
+        flat_source = flat / self.source.name
+        self.database.write_text(json.dumps([
+            self.entry, {**self.entry, "file": str(flat_source)},
+        ]))
+        for source in (self.source, flat_source):
+            library = source.parent
+            for spec in (
+                library.name, str(library.relative_to(self.root / "lib")),
+                str(library.relative_to(self.root)), str(library) + "/",
+            ):
+                with self.subTest(spec=spec):
+                    result = self.fix("--dry-run", "--library-only", spec)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    args = json.loads(self.calls.read_text().splitlines()[-1])
+                    selected = {p for p in (self.source, flat_source)
+                                if re.fullmatch(args[5], str(p))}
+                    self.assertEqual(selected, {source})
+                    filtered = {item["name"] for item in json.loads(args[3])}
+                    self.assertEqual(filtered, {str(source), str(library / "sibling.h")})
+
+    def test_fix_short_name_ignores_non_library_directories(self):
+        (self.root / "lib/Example").mkdir()
+        result = self.fix("--dry-run", "Example")
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_fix_rejects_ambiguous_flat_and_nested_short_name(self):
+        flat = self.root / "lib/Example"
+        flat.mkdir()
+        (flat / "CMakeLists.txt").touch()
+        result = self.fix("--dry-run", "Example")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("ambiguous", result.stderr)
+        self.assertIn("base/Example", result.stderr)
+        self.assertFalse(self.calls.exists())
+
+    def test_fix_rejects_invalid_library_paths(self):
+        for relative in ("lib/base/Example/deeper", "outside", "lib/NoCMake"):
+            path = self.root / relative
+            path.mkdir()
+            if path.name != "NoCMake":
+                (path / "CMakeLists.txt").touch()
+        (self.root / "lib/Escape").symlink_to(self.root / "outside")
+        for spec in ("lib/base/Example/deeper", "lib/../outside", "lib/Escape",
+                     "lib/NoCMake", "Missing"):
+            with self.subTest(spec=spec):
+                result = self.fix("--dry-run", spec)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertFalse(self.calls.exists())
 
     def test_apply_all_rechecks_using_bundled_script(self):
         self.executable(self.root / "docker/docker_dispatch.sh", """#!/usr/bin/env python3
