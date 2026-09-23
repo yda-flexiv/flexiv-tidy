@@ -220,6 +220,12 @@ class ReviewState:
         result: dict[Path, bytes] = {}
         for path, replacements in grouped.items():
             for index, replacement in enumerate(replacements):
+                if (
+                    replacement.offset < 0
+                    or replacement.length < 0
+                    or replacement.end > len(self.original[path])
+                ):
+                    raise ReviewError("this suggestion contains an out-of-range replacement")
                 for other in replacements[index + 1 :]:
                     if ranges_conflict(replacement, other):
                         raise ReviewError("this suggestion contains overlapping replacements")

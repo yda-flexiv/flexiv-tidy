@@ -55,6 +55,9 @@ def _fix_command(project: Path, arguments: list[str]) -> int:
     script = assets / "fix_clang_tidy.sh"
     reviewer = assets / "review_clang_tidy_fixes.py"
     config = tidy_config(project, assets / ".clang-tidy")
+    if config == assets / ".clang-tidy":
+        staged = _stage_assets(project, [".clang-tidy"])
+        config = project / staged / ".clang-tidy"
 
     env = os.environ.copy()
     env["FLEXIV_TIDY_PROJECT"] = str(project)
@@ -68,8 +71,16 @@ def _fix_command(project: Path, arguments: list[str]) -> int:
 
 def _clangd_command(project: Path, arguments: list[str]) -> int:
     dispatch = dispatch_script(project)
-    staged = _stage_assets(project, ["run_clangd_tidy_check.sh"])
-    inner = shlex.join(["bash", f"{staged}/run_clangd_tidy_check.sh", *arguments])
+    config = tidy_config(project, assets_dir() / ".clang-tidy")
+    names = ["run_clangd_tidy_check.sh"]
+    if config == assets_dir() / ".clang-tidy":
+        names.append(".clang-tidy")
+        config = project / STAGED_SUBDIR / ".clang-tidy"
+    staged = _stage_assets(project, names)
+    inner = shlex.join([
+        "env", f"FLEXIV_TIDY_CONFIG={config}",
+        "bash", f"{staged}/run_clangd_tidy_check.sh", *arguments,
+    ])
     return subprocess.run([str(dispatch), "shell", inner], cwd=project).returncode
 
 

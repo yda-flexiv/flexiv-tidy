@@ -152,9 +152,13 @@ if ((${#targets[@]} == 0)); then
     targets=(lib)
 fi
 
+analysis_dir="$(mktemp -d "${TMPDIR:-/tmp}/flexiv-clangd-tidy.XXXXXX")"
+trap 'rm -rf -- "$analysis_dir"' EXIT
+
+# Run preparation directly so set -e observes Python failures. Process
+# substitutions hide their exit status from mapfile and can yield a false pass.
 source_files=()
-mapfile -d '' -t source_files < <(
-    python3 - "$clangd_db" "${targets[@]}" <<'PY'
+python3 - "$clangd_db" "${targets[@]}" >"$analysis_dir/source-files" <<'PY'
 import json
 import pathlib
 import sys
@@ -194,7 +198,7 @@ for entry in commands:
 for path in sorted(files):
     sys.stdout.buffer.write(str(path).encode() + b"\0")
 PY
-)
+mapfile -d '' -t source_files < "$analysis_dir/source-files"
 
 if ((${#source_files[@]} == 0)); then
     echo "Error: no translation units from the compile database matched: ${targets[*]}" >&2
@@ -206,13 +210,11 @@ fi
 # mirror containing symlinks to the canonical config and hard-linked sources,
 # then rewrite a minimal compile database to address the mirrored paths. This
 # keeps cmake/tools/.clang-tidy as the sole project configuration file.
-analysis_dir="$(mktemp -d "${TMPDIR:-/tmp}/flexiv-clangd-tidy.XXXXXX")"
-trap 'rm -rf -- "$analysis_dir"' EXIT
 ln -s "$CLANG_TIDY_CONFIG_FILE" "$analysis_dir/.clang-tidy"
 
 analysis_files=()
-mapfile -d '' -t analysis_files < <(
-    python3 - "$clangd_db" "$PROJECT_ROOT" "$analysis_dir" "${source_files[@]}" <<'PY'
+python3 - "$clangd_db" "$PROJECT_ROOT" "$analysis_dir" "${source_files[@]}" \
+    >"$analysis_dir/analysis-files" <<'PY'
 import json
 import os
 import pathlib
@@ -243,6 +245,7 @@ with db_path.open(encoding="utf-8") as stream:
     commands = json.load(stream)
 
 analysis_commands = []
+covered_sources = set()
 for entry in commands:
     entry_file = pathlib.Path(entry["file"])
     if not entry_file.is_absolute():
@@ -266,17 +269,27 @@ for entry in commands:
             return str(destination)
         return argument
 
-    if "arguments" in rewritten:
-        rewritten["arguments"] = [rewrite_argument(value) for value in rewritten["arguments"]]
-    elif "command" in rewritten:
-        rewritten["command"] = shlex.join(
-            rewrite_argument(value) for value in shlex.split(rewritten["command"])
-        )
+    arguments = entry.get("arguments")
+    if arguments is None:
+        arguments = shlex.split(entry["command"])
+    arguments = [rewrite_argument(value) for value in arguments]
+    # Moving a source changes where #include "sibling.h" is searched first.
+    # Restore its original directory ahead of the existing include flags,
+    # after any compiler launcher such as ccache.
+    insert_at = next(
+        (index for index, value in enumerate(arguments[1:], 1)
+         if value.startswith("-") or value == str(destination)),
+        len(arguments),
+    )
+    arguments[insert_at:insert_at] = ["-iquote", str(source.parent)]
+    rewritten["arguments"] = arguments
+    rewritten.pop("command", None)
     analysis_commands.append(rewritten)
+    covered_sources.add(source)
 
-if len(analysis_commands) != len(mirrored):
+if covered_sources != set(mirrored):
     raise SystemExit(
-        f"compile database contains {len(analysis_commands)} of "
+        f"compile database contains {len(covered_sources)} of "
         f"{len(mirrored)} selected translation units"
     )
 
@@ -286,7 +299,7 @@ with (analysis_root / "compile_commands.json").open("w", encoding="utf-8") as st
 for source in source_paths:
     sys.stdout.buffer.write(str(mirrored[source]).encode() + b"\0")
 PY
-)
+mapfile -d '' -t analysis_files < "$analysis_dir/analysis-files"
 compile_commands_dir="$analysis_dir"
 
 query_driver_args=()

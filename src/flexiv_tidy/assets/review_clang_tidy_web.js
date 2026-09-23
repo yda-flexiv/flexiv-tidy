@@ -376,6 +376,8 @@ function renderDetail() {
 
 async function select(id) {
   selectedId = id;
+  detail = null;
+  renderDetail();
   renderQueue();
   try {
     const result = await api(`/api/findings/${id}`);
@@ -418,8 +420,8 @@ function nextPending(afterId) {
 }
 
 async function decide(decision, edits = undefined) {
-  if (!selectedId) return;
-  const current = selectedId;
+  if (!detail || detail.finding.id !== selectedId) return;
+  const current = detail.finding.id;
   try {
     snapshot = await api(`/api/findings/${current}`, {
       method: 'POST',

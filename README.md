@@ -160,6 +160,20 @@ container. Idempotent; run once per container before `clangd`.
 - Python 3.10+ and PyYAML are installed with `flexiv-tidy`.
 - A modern browser is recommended for fix review; `--tui` needs only a terminal.
 
-The only machine outside the worktree that is written to is
-`<worktree>/build/.flexiv-tidy/`, which stages bundled scripts for the Docker
-mount. Source changes are written only after final confirmation.
+Bundled scripts and the fallback `.clang-tidy` configuration are staged in
+`<worktree>/build/.flexiv-tidy/` so Docker can access them. The project's
+`cmake/tools/.clang-tidy` takes precedence when present. Review mode writes
+source changes only after final confirmation; `--apply-all` writes immediately
+and then rechecks the selected scope.
+
+## Development checks
+
+```sh
+uv run python -m unittest discover -s tests -v
+shellcheck src/flexiv_tidy/assets/*.sh
+node --check src/flexiv_tidy/assets/review_clang_tidy_web.js
+```
+
+The tests use temporary projects and stub Docker/tool commands. With a local
+C++ compiler and Node.js, they also check quoted-header resolution in mirrored
+sources and reviewer behavior while a finding is loading.

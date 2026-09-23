@@ -121,8 +121,9 @@ done
 
 [ -n "$LIBRARY_SPEC" ] || { usage >&2; exit 2; }
 [[ "$JOBS" =~ ^[0-9]+$ ]] || fail "job count must be a non-negative integer"
-[[ "$WEB_PORT" =~ ^[0-9]+$ ]] && [ "$WEB_PORT" -le 65535 ] \
-    || fail "web port must be an integer between 0 and 65535"
+if ! [[ "$WEB_PORT" =~ ^[0-9]+$ ]] || ! [ "$WEB_PORT" -le 65535 ]; then
+    fail "web port must be an integer between 0 and 65535"
+fi
 [[ "$REVIEW_UI" == "web" || "$REVIEW_UI" == "tui" ]] \
     || fail "FLEXIV_TIDY_UI must be 'web' or 'tui'"
 
@@ -446,7 +447,7 @@ case "$MODE" in
             verify_scope="--include-dependencies"
         fi
         set +e
-        "$REPO_ROOT/fix_clang_tidy.sh" --dry-run "$verify_scope" \
+        bash "${BASH_SOURCE[0]}" --dry-run "$verify_scope" \
             --build-dir "$BUILD_DIR" --jobs "$JOBS" "$LIBRARY_DIR"
         verify_status=$?
         set -e
