@@ -68,16 +68,19 @@ class ReviewError(Exception):
     """A proposed replacement cannot safely be applied to the current buffers."""
 
 
-def scoped_path(raw_path: str, build_directory: str, library_root: Path) -> Path | None:
+def scoped_path(
+    raw_path: str,
+    build_directory: str,
+    library_root: Path,
+    extra_roots: tuple[Path, ...] = (),
+) -> Path | None:
     if not raw_path:
         return None
     path = Path(raw_path)
     if not path.is_absolute():
         path = Path(build_directory) / path
     path = path.resolve()
-    try:
-        path.relative_to(library_root)
-    except ValueError:
+    if not any(path.is_relative_to(root) for root in (library_root, *extra_roots)):
         return None
     if any("generated" in part.lower() for part in path.parts):
         return None
@@ -86,7 +89,11 @@ def scoped_path(raw_path: str, build_directory: str, library_root: Path) -> Path
     return path
 
 
-def load_findings(fixes_file: Path, library_root: Path) -> tuple[list[Finding], int]:
+def load_findings(
+    fixes_file: Path,
+    library_root: Path,
+    extra_roots: tuple[Path, ...] = (),
+) -> tuple[list[Finding], int]:
     try:
         document: dict[str, Any] = yaml.safe_load(fixes_file.read_text()) or {}
     except (OSError, yaml.YAMLError) as error:
@@ -99,7 +106,7 @@ def load_findings(fixes_file: Path, library_root: Path) -> tuple[list[Finding], 
         diagnostic = raw_finding.get("DiagnosticMessage", {}) or {}
         build_directory = str(raw_finding.get("BuildDirectory", ""))
         diagnostic_path = scoped_path(
-            str(diagnostic.get("FilePath", "")), build_directory, library_root
+            str(diagnostic.get("FilePath", "")), build_directory, library_root, extra_roots
         )
         replacements: list[Replacement] = []
         unsafe_replacement = False
@@ -107,7 +114,8 @@ def load_findings(fixes_file: Path, library_root: Path) -> tuple[list[Finding], 
             "Replacements", raw_finding.get("Replacements", [])
         ):
             path = scoped_path(
-                str(raw_replacement.get("FilePath", "")), build_directory, library_root
+                str(raw_replacement.get("FilePath", "")), build_directory, library_root,
+                extra_roots,
             )
             if path is None:
                 unsafe_replacement = True
@@ -744,7 +752,7 @@ def review(findings: list[Finding], state: ReviewState, ignored: int) -> int:
 
     print(f"\nFound {len(findings)} reviewable diagnostic(s).")
     if ignored:
-        print(f"Ignored {ignored} diagnostic(s) outside the selected library or generated code.")
+        print(f"Ignored {ignored} diagnostic(s) outside the review scope or generated code.")
     print("No source files have been changed. Empty input rejects a suggestion.")
 
     for index, finding in enumerate(findings, 1):
@@ -900,6 +908,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("fixes_file", type=Path, help="YAML file produced by clang-tidy -export-fixes")
     parser.add_argument("--library-root", required=True, type=Path)
+    parser.add_argument("--extra-root", action="append", default=[], type=Path)
     parser.add_argument(
         "--display-root",
         type=Path,
@@ -928,14 +937,16 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     library_root = args.library_root.resolve()
+    extra_roots = tuple(root.resolve() for root in args.extra_root)
     display_root = args.display_root.resolve() if args.display_root else None
     try:
-        findings, ignored = load_findings(args.fixes_file, library_root)
+        findings, ignored = load_findings(args.fixes_file, library_root, extra_roots)
         if not findings:
             if ignored:
                 print(
                     f"clang-tidy exported {ignored} diagnostic(s), but all were outside "
-                    f"the review scope {library_root}. No files changed."
+                    f"the review scope {', '.join(map(str, (library_root, *extra_roots)))}. "
+                    "No files changed."
                 )
             else:
                 print("clang-tidy exported no in-scope diagnostics or fixes. No files changed.")

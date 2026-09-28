@@ -15,7 +15,7 @@ path (lib/comm/FvrRemoteParam or lib/FvrUiVersionAndUpgradeFrame).
 Options:
   -n, --dry-run              Report diagnostics without opening the reviewer
       --apply-all            Apply all available fixes without review (risky)
-      --include-dependencies Include diagnostics/fixes in dependencies under lib/
+      --include-dependencies Include diagnostics/fixes in lib/ and external/ headers
       --library-only         Only report/fix files inside the selected library
   -j, --jobs <count>         Parallel clang-tidy jobs (default: CPU count)
       --build-dir <dir>      Compilation database directory (default: build/clang-tidy)
@@ -25,8 +25,8 @@ Options:
   -h, --help                 Show this help
 
 Scope defaults:
-  All modes include in-tree dependency headers exposed by the selected library,
-  matching run_clang_tidy_check.sh. Use --library-only for a strict write scope.
+  By default, diagnostics include lib/ and external/ headers exposed by the
+  selected library. Use --library-only for a strict write scope and --apply-all.
 
 Examples:
   ./fix_clang_tidy.sh FvrRemoteParam
@@ -235,16 +235,30 @@ if [ "$SCOPE_MODE" = "dependencies" ]; then
     REVIEW_ROOT="$REPO_ROOT/lib"
     SCOPE_DESCRIPTION="selected library plus in-tree dependencies under lib/"
     LINE_FILTER_KIND="headers"
+    SCOPE_ROOTS=("$REPO_ROOT/lib")
+    REVIEW_EXTRA_ROOT=""
+    if [ -d "$REPO_ROOT/external" ]; then
+        SCOPE_ROOTS+=("$REPO_ROOT/external")
+        REVIEW_EXTRA_ROOT="$REPO_ROOT/external"
+        SCOPE_DESCRIPTION="selected library plus dependency headers under lib/ and external/"
+        [ "$MODE" != "apply-all" ] || fail \
+            "--apply-all with external dependencies is unsafe; use interactive review or --library-only"
+    fi
 else
     REVIEW_ROOT="$LIBRARY_DIR"
     SCOPE_DESCRIPTION="selected library only"
     LINE_FILTER_KIND="all"
+    SCOPE_ROOTS=("$LIBRARY_DIR")
+    REVIEW_EXTRA_ROOT=""
 fi
 
 # Keep the filter below Linux's per-argument limit. Dependency .cpp files are not
 # analyzed; only the selected translation units and non-generated headers need to
-# be listed. This remains a precise write boundary for --apply-all.
-LINE_FILTER=$("$PYTHON" - "$REVIEW_ROOT" "$LINE_FILTER_KIND" "$REPO_ROOT" "${TRANSLATION_UNITS[@]}" <<'PY'
+# be listed. For external dependencies, the bounded header filter below and
+# reviewer's path scope handle diagnostics without a huge line-filter argument.
+LINE_FILTER=""
+if [ -z "$REVIEW_EXTRA_ROOT" ]; then
+    LINE_FILTER=$("$PYTHON" - "$REVIEW_ROOT" "$LINE_FILTER_KIND" "$REPO_ROOT" "${TRANSLATION_UNITS[@]}" <<'PY'
 import json
 import os
 import pathlib
@@ -293,28 +307,29 @@ if len(line_filter.encode()) >= 120_000:
     raise SystemExit(1)
 print(line_filter)
 PY
-)
+    )
+fi
 
-HEADER_FILTER=$("$PYTHON" - "$REVIEW_ROOT" <<'PY'
+HEADER_FILTER=$("$PYTHON" - "${SCOPE_ROOTS[@]}" <<'PY'
 import os
 import pathlib
 import re
 import sys
 
-root = pathlib.Path(sys.argv[1]).resolve()
 header_extensions = {".h", ".hh", ".hpp", ".hxx", ".inc"}
 directories = set()
-for directory, child_directories, names in os.walk(root):
-    child_directories[:] = [
-        item for item in child_directories if "generated" not in item.lower()
-    ]
-    if any(pathlib.Path(name).suffix.lower() in header_extensions for name in names):
-        directories.add(str(pathlib.Path(directory).resolve()))
+for root in sys.argv[1:]:
+    for directory, child_directories, names in os.walk(root):
+        child_directories[:] = [
+            item for item in child_directories if "generated" not in item.lower()
+        ]
+        if any(pathlib.Path(name).suffix.lower() in header_extensions for name in names):
+            directories.add(str(pathlib.Path(directory).resolve()))
 
 # clang-tidy uses LLVM's POSIX regular expressions, so use a capturing group
 # rather than Python's non-capturing (?:...) syntax.
 if directories:
-    print("^(" + "|".join(re.escape(path) for path in sorted(directories)) + ")/")
+    print("^(" + "|".join(re.escape(path) for path in sorted(directories)) + ")/[^/]+$")
 else:
     print("a^")
 PY
@@ -490,6 +505,9 @@ case "$MODE" in
             --library-root "$REVIEW_ROOT"
             --display-root "$REPO_ROOT"
         )
+        if [ -n "$REVIEW_EXTRA_ROOT" ]; then
+            reviewer_args+=(--extra-root "$REVIEW_EXTRA_ROOT")
+        fi
         if [ "$REVIEW_OPEN" = false ]; then
             reviewer_args+=(--no-open)
         fi

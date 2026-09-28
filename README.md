@@ -130,7 +130,7 @@ Options are forwarded to the bundled `fix_clang_tidy.sh`:
 ```
 -n, --dry-run              report diagnostics without opening the reviewer
     --apply-all            apply all available fixes without review (risky)
-    --include-dependencies include diagnostics/fixes in dependencies under lib/
+    --include-dependencies include diagnostics/fixes in lib/ and external/ headers
     --library-only         only report/fix files inside the selected library
 -j, --jobs <count>         parallel clang-tidy jobs (default: CPU count)
     --build-dir <dir>      compilation database directory (default: build/clang-tidy)
@@ -138,6 +138,12 @@ Options are forwarded to the bundled `fix_clang_tidy.sh`:
     --no-open              print the Web UI URL without opening a browser
     --web-port <port>      bind the Web UI to a specific local port
 ```
+
+The default scope includes headers from `lib/` and `external/` that are seen
+while analyzing the selected library's translation units. The reviewer can
+apply fixes in those headers after confirmation. `--apply-all` requires
+`--library-only` when `external/` exists, because automated writes cannot be
+bounded safely to the larger dependency scope.
 
 ### `clangd [paths...] [options]`
 

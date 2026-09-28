@@ -24,6 +24,45 @@ SPEC.loader.exec_module(reviewer)
 
 
 class WebReviewSessionTest(unittest.TestCase):
+    def test_external_header_findings_are_reviewable_only_when_in_scope(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / "repo"
+            library = root / "lib/Example"
+            external = root / "external/flexiv_sw_base/lib/Example/Inc"
+            other = root / "app"
+            for directory in (library, external, other):
+                directory.mkdir(parents=True)
+            header = external / "external.hpp"
+            header.write_text("bad();\n")
+            app_header = other / "other.hpp"
+            app_header.write_text("bad();\n")
+            fixes = root / "fixes.yaml"
+            fixes.write_text(reviewer.yaml.safe_dump({
+                "Diagnostics": [
+                    {
+                        "DiagnosticName": "modernize-example",
+                        "BuildDirectory": str(root),
+                        "DiagnosticMessage": {
+                            "FilePath": str(path),
+                            "FileOffset": 0,
+                            "Message": "replace bad",
+                            "Replacements": [{
+                                "FilePath": str(path), "Offset": 0,
+                                "Length": 3, "ReplacementText": "good",
+                            }],
+                        },
+                    }
+                    for path in (header, app_header)
+                ],
+            }))
+
+            findings, ignored = reviewer.load_findings(
+                fixes, root / "lib", (root / "external",)
+            )
+            self.assertEqual([finding.path for finding in findings], [header])
+            self.assertEqual(ignored, 1)
+            self.assertEqual(findings[0].replacements[0].path, header)
+
     @unittest.skipUnless(shutil.which("node"), "Node.js unavailable")
     def test_ui_does_not_accept_a_finding_while_loading(self):
         result = subprocess.run(

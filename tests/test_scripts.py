@@ -180,6 +180,35 @@ with open(os.environ['TEST_CALLS'], 'a') as stream:
         )
         self.assertEqual(len(names), 942)
 
+    def test_fix_includes_external_headers_without_unbounded_line_filter(self):
+        external = self.root / "external/flexiv_sw_base/lib/FvrSystemUpdate/Inc"
+        external.mkdir(parents=True)
+        header = external / "CommSystemUpdateState.hpp"
+        header.write_text("class CommSystemUpdateStatePub {};\n")
+        generated = external / "Generated"
+        generated.mkdir()
+        (generated / "skip.hpp").touch()
+
+        result = self.fix("--dry-run", "Example")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        args = json.loads(self.calls.read_text().splitlines()[-1])
+        self.assertEqual(args[3], "")
+        self.assertIsNotNone(re.search(args[2], str(header)))
+        self.assertIsNone(re.search(args[2], str(generated / "skip.hpp")))
+
+        self.calls.unlink()
+        result = self.fix("--dry-run", "--library-only", "Example")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        args = json.loads(self.calls.read_text().splitlines()[-1])
+        self.assertIsNone(re.search(args[2], str(header)))
+        self.assertNotIn(str(header), {item["name"] for item in json.loads(args[3])})
+
+        self.calls.unlink()
+        result = self.fix("--apply-all", "Example")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("--apply-all with external dependencies is unsafe", result.stderr)
+        self.assertFalse(self.calls.exists())
+
     def test_fix_short_name_ignores_non_library_directories(self):
         (self.root / "lib/Example").mkdir()
         result = self.fix("--dry-run", "Example")
