@@ -159,6 +159,26 @@ with open(os.environ['TEST_CALLS'], 'a') as stream:
                     self.assertEqual(selected, {source})
                     filtered = {item["name"] for item in json.loads(args[3])}
                     self.assertEqual(filtered, {str(source), str(library / "sibling.h")})
+                    self.assertTrue(all("lines" not in item for item in json.loads(args[3])))
+
+    def test_fix_compacts_large_dependency_filter(self):
+        dependency = self.root / "lib/Other"
+        dependency.mkdir()
+        for index in range(940):
+            (dependency / f"{index:04d}_{'x' * 75}.h").touch()
+
+        result = self.fix("--dry-run", "Example")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        args = json.loads(self.calls.read_text().splitlines()[-1])
+        line_filter = args[3]
+        self.assertLess(len(line_filter.encode()), 120_000)
+        names = {item["name"] for item in json.loads(line_filter)}
+        self.assertTrue(str(self.source.relative_to(self.root.parent)) in names)
+        self.assertTrue(
+            str((dependency / f"0939_{'x' * 75}.h").relative_to(self.root.parent))
+            in names
+        )
+        self.assertEqual(len(names), 942)
 
     def test_fix_short_name_ignores_non_library_directories(self):
         (self.root / "lib/Example").mkdir()

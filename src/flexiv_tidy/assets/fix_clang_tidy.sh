@@ -244,7 +244,7 @@ fi
 # Keep the filter below Linux's per-argument limit. Dependency .cpp files are not
 # analyzed; only the selected translation units and non-generated headers need to
 # be listed. This remains a precise write boundary for --apply-all.
-LINE_FILTER=$("$PYTHON" - "$REVIEW_ROOT" "$LINE_FILTER_KIND" "${TRANSLATION_UNITS[@]}" <<'PY'
+LINE_FILTER=$("$PYTHON" - "$REVIEW_ROOT" "$LINE_FILTER_KIND" "$REPO_ROOT" "${TRANSLATION_UNITS[@]}" <<'PY'
 import json
 import os
 import pathlib
@@ -252,7 +252,8 @@ import sys
 
 root = pathlib.Path(sys.argv[1]).resolve()
 kind = sys.argv[2]
-translation_units = {str(pathlib.Path(path).resolve()) for path in sys.argv[3:]}
+repo_root = pathlib.Path(sys.argv[3]).resolve()
+translation_units = {str(pathlib.Path(path).resolve()) for path in sys.argv[4:]}
 header_extensions = {".h", ".hh", ".hpp", ".hxx", ".inc"}
 source_extensions = {".c", ".cc", ".cpp", ".cxx"}
 extensions = header_extensions if kind == "headers" else header_extensions | source_extensions
@@ -266,14 +267,27 @@ for directory, directories, names in os.walk(root):
         if path.suffix.lower() in extensions:
             paths.add(str(path.resolve()))
 
-line_filter = json.dumps(
-    [{"name": path, "lines": [[1, 2147483647]]} for path in sorted(paths)],
-    separators=(",", ":"),
-)
+# clang-tidy treats a missing "lines" field as the whole file. Keep full paths
+# when they fit, then use worktree-relative suffixes if the argument is too big.
+# Its line filter matches file names by suffix; retaining the worktree name
+# is more specific than using paths starting at lib/.
+def serialize(names):
+    return json.dumps([{"name": name} for name in names], separators=(",", ":"))
+
+
+line_filter = serialize(sorted(paths))
+if len(line_filter.encode()) >= 120_000:
+    compact_paths = []
+    for path in sorted(paths):
+        try:
+            compact_paths.append(str(pathlib.Path(path).relative_to(repo_root.parent)))
+        except ValueError:
+            compact_paths.append(path)
+    line_filter = serialize(compact_paths)
 if len(line_filter.encode()) >= 120_000:
     print(
         "Error: clang-tidy line filter exceeds the safe command-line size; "
-        "use --library-only or interactive review",
+        "use --library-only",
         file=sys.stderr,
     )
     raise SystemExit(1)
